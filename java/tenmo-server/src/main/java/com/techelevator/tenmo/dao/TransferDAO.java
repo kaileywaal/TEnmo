@@ -15,4 +15,6 @@ public interface TransferDAO {
     List<Transfer> getAllTransfers();
 
     List<Transfer> getPendingTransfers(int userId);
+
+    void updateTransfer(Transfer transfer);
 }

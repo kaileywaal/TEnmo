@@ -6,10 +6,6 @@ import com.techelevator.tenmo.exceptions.UserNotFoundException;
 import com.techelevator.tenmo.model.*;
 import com.techelevator.tenmo.services.*;
 import com.techelevator.view.ConsoleService;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 
@@ -110,24 +106,9 @@ public class App {
 		}
 
 		int transferIdChoice = console.getUserInputInteger("\nPlease enter transfer ID to view details (0 to cancel)");
-		if(transferIdChoice != 0) {
-			try {
-				boolean validTransferIdChoice = false;
-				Transfer transferChoice = null;
-				for (Transfer transfer : transfers) {
-					if (transfer.getTransferId() == transferIdChoice) {
-						validTransferIdChoice = true;
-						transferChoice = transfer;
-						break;
-					}
-				}
-				if (!validTransferIdChoice) {
-					throw new InvalidTransferIdChoice();
-				}
-				printTransferDetails(currentUser, transferChoice);
-			} catch (InvalidTransferIdChoice e) {
-				System.out.println(e.getMessage());
-			}
+		Transfer transferChoice = validateTransferIdChoice(transferIdChoice, transfers, currentUser);
+		if(transferChoice != null) {
+			printTransferDetails(currentUser, transferChoice);
 		}
 	}
 
@@ -142,7 +123,11 @@ public class App {
 			printTransferStubDetails(currentUser, transfer);
 		}
 		// TODO ask to view details
-
+		int transferIdChoice = console.getUserInputInteger("\nPlease enter transfer ID to approve/reject (0 to cancel)");
+		Transfer transferChoice = validateTransferIdChoice(transferIdChoice, transfers, currentUser);
+		if(transferChoice != null) {
+			approveOrReject(transferChoice, currentUser);
+		}
 	}
 
 	private void sendBucks() {
@@ -156,190 +141,214 @@ public class App {
 		}
 	}
 
-		private void requestBucks () {
-			User[] users = userService.getAllUsers(currentUser);
-			printUserOptions(currentUser, users);
-			int userIdChoice = console.getUserInputInteger("Enter ID of user you are requesting from (0 to cancel)");
-			if (validateUserChoice(userIdChoice, users, currentUser)) {
-				String amountChoice = console.getUserInput("Enter amount");
-				createTransfer(userIdChoice, amountChoice, "Request", "Pending");
-			}
+	private void requestBucks () {
+		User[] users = userService.getAllUsers(currentUser);
+		printUserOptions(currentUser, users);
+		int userIdChoice = console.getUserInputInteger("Enter ID of user you are requesting from (0 to cancel)");
+		if (validateUserChoice(userIdChoice, users, currentUser)) {
+			String amountChoice = console.getUserInput("Enter amount");
+			createTransfer(userIdChoice, amountChoice, "Request", "Pending");
 		}
-
-		private void exitProgram () {
-			System.exit(0);
-		}
-
-		private void registerAndLogin () {
-			while (!isAuthenticated()) {
-				String choice = (String) console.getChoiceFromOptions(LOGIN_MENU_OPTIONS);
-				if (LOGIN_MENU_OPTION_LOGIN.equals(choice)) {
-					login();
-				} else if (LOGIN_MENU_OPTION_REGISTER.equals(choice)) {
-					register();
-				} else {
-					// the only other option on the login menu is to exit
-					exitProgram();
-				}
-			}
-		}
-
-		private boolean isAuthenticated () {
-			return currentUser != null;
-		}
-
-		private void register () {
-			System.out.println("Please register a new user account");
-			boolean isRegistered = false;
-			while (!isRegistered) //will keep looping until user is registered
-			{
-				UserCredentials credentials = collectUserCredentials();
-				try {
-					authenticationService.register(credentials);
-					isRegistered = true;
-					System.out.println("Registration successful. You can now login.");
-				} catch (AuthenticationServiceException e) {
-					System.out.println("REGISTRATION ERROR: " + e.getMessage());
-					System.out.println("Please attempt to register again.");
-				}
-			}
-		}
-
-		private void login () {
-			System.out.println("Please log in");
-			currentUser = null;
-			while (currentUser == null) //will keep looping until user is logged in
-			{
-				UserCredentials credentials = collectUserCredentials();
-				try {
-					currentUser = authenticationService.login(credentials);
-				} catch (AuthenticationServiceException e) {
-					System.out.println("LOGIN ERROR: " + e.getMessage());
-					System.out.println("Please attempt to login again.");
-				}
-			}
-			transferIdNumber = getHighestTransferIdNumber() + 1;
-		}
-
-		private UserCredentials collectUserCredentials () {
-			String username = console.getUserInput("Username");
-			String password = console.getUserInput("Password");
-			return new UserCredentials(username, password);
-		}
-
-		private Transfer createTransfer (int accountChoiceUserId, String amountString, String transferType, String status){
-
-			int transferTypeId = transferTypeService.getTransferType(currentUser, transferType).getTransferTypeId();
-			int transferStatusId = transferStatusService.getTransferStatus(currentUser, status).getTransferStatusId();
-			int accountToId;
-			int accountFromId;
-			if(transferType.equals("Send")) {
-				accountToId = accountService.getAccountByUserId(currentUser, accountChoiceUserId).getAccountId();
-				accountFromId = accountService.getAccountByUserId(currentUser, currentUser.getUser().getId()).getAccountId();
-			} else {
-				accountToId = accountService.getAccountByUserId(currentUser, currentUser.getUser().getId()).getAccountId();
-				accountFromId = accountService.getAccountByUserId(currentUser, accountChoiceUserId).getAccountId();
-			}
-
-			BigDecimal amount = new BigDecimal(amountString);
-
-			Transfer transfer = new Transfer();
-			transfer.setAccountFrom(accountFromId);
-			transfer.setAccountTo(accountToId);
-			transfer.setAmount(amount);
-			transfer.setTransferStatusId(transferStatusId);
-			transfer.setTransferTypeId(transferTypeId);
-			transfer.setTransferId(transferIdNumber);
-
-			transferService.createTransfer(currentUser, transfer);
-			// increment transferIdNumber so it is always unique
-			App.incrementTransferIdNumber();
-			return transfer;
-		}
-
-		private int getHighestTransferIdNumber() {
-			Transfer[] transfers = transferService.getAllTransfers(currentUser);
-			int highestTransferIdNumber = 0;
-			for(Transfer transfer: transfers) {
-				if(transfer.getTransferId() > highestTransferIdNumber) {
-					highestTransferIdNumber = transfer.getTransferId();
-				}
-			}
-			return highestTransferIdNumber;
-		}
-
-		private void printTransferStubDetails(AuthenticatedUser authenticatedUser, Transfer transfer) {
-			String fromOrTo = "";
-			int accountFrom = transfer.getAccountFrom();
-			int accountTo = transfer.getAccountTo();
-			if (accountService.getAccountById(currentUser, accountTo).getUserId() == authenticatedUser.getUser().getId()) {
-				int accountFromUserId = accountService.getAccountById(currentUser, accountFrom).getUserId();
-				String userFromName = userService.getUserByUserId(currentUser, accountFromUserId).getUsername();
-				fromOrTo = "From: " + userFromName;
-			} else {
-				int accountToUserId = accountService.getAccountById(currentUser, accountTo).getUserId();
-				String userToName = userService.getUserByUserId(currentUser, accountToUserId).getUsername();
-				fromOrTo = "To: " + userToName;
-			}
-
-			console.printTransfers(transfer.getTransferId(), fromOrTo, transfer.getAmount());
-		}
-
-
-		private void printTransferDetails(AuthenticatedUser currentUser, Transfer transferChoice) {
-			int id = transferChoice.getTransferId();
-			BigDecimal amount = transferChoice.getAmount();
-			int fromAccount = transferChoice.getAccountFrom();
-			int toAccount = transferChoice.getAccountTo();
-			int transactionTypeId = transferChoice.getTransferTypeId();
-			int transactionStatusId = transferChoice.getTransferStatusId();
-
-			int fromUserId = accountService.getAccountById(currentUser, fromAccount).getUserId();
-			String fromUserName = userService.getUserByUserId(currentUser, fromUserId).getUsername();
-			int toUserId = accountService.getAccountById(currentUser, toAccount).getUserId();
-			String toUserName = userService.getUserByUserId(currentUser, toUserId).getUsername();
-			String transactionType = transferTypeService.getTransferTypeFromId(currentUser, transactionTypeId).getTransferTypeDescription();
-			String transactionStatus = transferStatusService.getTransferStatusById(currentUser, transactionStatusId).getTransferStatusDesc();
-
-			console.printTranferDetails(id, fromUserName, toUserName, transactionType, transactionStatus, amount);
-		}
-
-		private void printUserOptions(AuthenticatedUser authenticatedUser, User[] users) {
-
-			System.out.println("-------------------------------");
-			System.out.println("Users");
-			System.out.println("ID          Name");
-			System.out.println("-------------------------------");
-
-			// TODO: update this to not display current user
-			console.printUsers(users);
-		}
-
-		private boolean validateUserChoice(int userIdChoice, User[] users, AuthenticatedUser currentUser) {
-			if(userIdChoice != 0) {
-				try {
-					boolean validUserIdChoice = false;
-
-					for (User user : users) {
-						if(userIdChoice == currentUser.getUser().getId()) {
-							throw new InvalidUserChoiceException();
-						}
-						if (user.getId() == userIdChoice) {
-							validUserIdChoice = true;
-							break;
-						}
-					}
-					if (validUserIdChoice == false) {
-						throw new UserNotFoundException();
-					}
-					return true;
-				} catch (UserNotFoundException | InvalidUserChoiceException e) {
-					System.out.println(e.getMessage());
-				}
-			}
-			return false;
-		}
-
-
 	}
+
+	private void exitProgram () {
+		System.exit(0);
+	}
+
+	private void registerAndLogin () {
+		while (!isAuthenticated()) {
+			String choice = (String) console.getChoiceFromOptions(LOGIN_MENU_OPTIONS);
+			if (LOGIN_MENU_OPTION_LOGIN.equals(choice)) {
+				login();
+			} else if (LOGIN_MENU_OPTION_REGISTER.equals(choice)) {
+				register();
+			} else {
+				// the only other option on the login menu is to exit
+				exitProgram();
+			}
+		}
+	}
+
+	private boolean isAuthenticated () {
+		return currentUser != null;
+	}
+
+	private void register () {
+		System.out.println("Please register a new user account");
+		boolean isRegistered = false;
+		while (!isRegistered) //will keep looping until user is registered
+		{
+			UserCredentials credentials = collectUserCredentials();
+			try {
+				authenticationService.register(credentials);
+				isRegistered = true;
+				System.out.println("Registration successful. You can now login.");
+			} catch (AuthenticationServiceException e) {
+				System.out.println("REGISTRATION ERROR: " + e.getMessage());
+				System.out.println("Please attempt to register again.");
+			}
+		}
+	}
+
+	private void login () {
+		System.out.println("Please log in");
+		currentUser = null;
+		while (currentUser == null) //will keep looping until user is logged in
+		{
+			UserCredentials credentials = collectUserCredentials();
+			try {
+				currentUser = authenticationService.login(credentials);
+			} catch (AuthenticationServiceException e) {
+				System.out.println("LOGIN ERROR: " + e.getMessage());
+				System.out.println("Please attempt to login again.");
+			}
+		}
+		transferIdNumber = getHighestTransferIdNumber() + 1;
+	}
+
+	private UserCredentials collectUserCredentials () {
+		String username = console.getUserInput("Username");
+		String password = console.getUserInput("Password");
+		return new UserCredentials(username, password);
+	}
+
+	private Transfer createTransfer (int accountChoiceUserId, String amountString, String transferType, String status){
+
+		int transferTypeId = transferTypeService.getTransferType(currentUser, transferType).getTransferTypeId();
+		int transferStatusId = transferStatusService.getTransferStatus(currentUser, status).getTransferStatusId();
+		int accountToId;
+		int accountFromId;
+		if(transferType.equals("Send")) {
+			accountToId = accountService.getAccountByUserId(currentUser, accountChoiceUserId).getAccountId();
+			accountFromId = accountService.getAccountByUserId(currentUser, currentUser.getUser().getId()).getAccountId();
+		} else {
+			accountToId = accountService.getAccountByUserId(currentUser, currentUser.getUser().getId()).getAccountId();
+			accountFromId = accountService.getAccountByUserId(currentUser, accountChoiceUserId).getAccountId();
+		}
+
+		BigDecimal amount = new BigDecimal(amountString);
+
+		Transfer transfer = new Transfer();
+		transfer.setAccountFrom(accountFromId);
+		transfer.setAccountTo(accountToId);
+		transfer.setAmount(amount);
+		transfer.setTransferStatusId(transferStatusId);
+		transfer.setTransferTypeId(transferTypeId);
+		transfer.setTransferId(transferIdNumber);
+
+		transferService.createTransfer(currentUser, transfer);
+		// increment transferIdNumber so it is always unique
+		App.incrementTransferIdNumber();
+		return transfer;
+	}
+
+	private int getHighestTransferIdNumber() {
+		Transfer[] transfers = transferService.getAllTransfers(currentUser);
+		int highestTransferIdNumber = 0;
+		for(Transfer transfer: transfers) {
+			if(transfer.getTransferId() > highestTransferIdNumber) {
+				highestTransferIdNumber = transfer.getTransferId();
+			}
+		}
+		return highestTransferIdNumber;
+	}
+
+	private void printTransferStubDetails(AuthenticatedUser authenticatedUser, Transfer transfer) {
+		String fromOrTo = "";
+		int accountFrom = transfer.getAccountFrom();
+		int accountTo = transfer.getAccountTo();
+		if (accountService.getAccountById(currentUser, accountTo).getUserId() == authenticatedUser.getUser().getId()) {
+			int accountFromUserId = accountService.getAccountById(currentUser, accountFrom).getUserId();
+			String userFromName = userService.getUserByUserId(currentUser, accountFromUserId).getUsername();
+			fromOrTo = "From: " + userFromName;
+		} else {
+			int accountToUserId = accountService.getAccountById(currentUser, accountTo).getUserId();
+			String userToName = userService.getUserByUserId(currentUser, accountToUserId).getUsername();
+			fromOrTo = "To: " + userToName;
+		}
+
+		console.printTransfers(transfer.getTransferId(), fromOrTo, transfer.getAmount());
+	}
+
+
+	private void printTransferDetails(AuthenticatedUser currentUser, Transfer transferChoice) {
+		int id = transferChoice.getTransferId();
+		BigDecimal amount = transferChoice.getAmount();
+		int fromAccount = transferChoice.getAccountFrom();
+		int toAccount = transferChoice.getAccountTo();
+		int transactionTypeId = transferChoice.getTransferTypeId();
+		int transactionStatusId = transferChoice.getTransferStatusId();
+
+		int fromUserId = accountService.getAccountById(currentUser, fromAccount).getUserId();
+		String fromUserName = userService.getUserByUserId(currentUser, fromUserId).getUsername();
+		int toUserId = accountService.getAccountById(currentUser, toAccount).getUserId();
+		String toUserName = userService.getUserByUserId(currentUser, toUserId).getUsername();
+		String transactionType = transferTypeService.getTransferTypeFromId(currentUser, transactionTypeId).getTransferTypeDescription();
+		String transactionStatus = transferStatusService.getTransferStatusById(currentUser, transactionStatusId).getTransferStatusDesc();
+
+		console.printTransferDetails(id, fromUserName, toUserName, transactionType, transactionStatus, amount);
+	}
+
+	private void printUserOptions(AuthenticatedUser authenticatedUser, User[] users) {
+
+		System.out.println("-------------------------------");
+		System.out.println("Users");
+		System.out.println("ID          Name");
+		System.out.println("-------------------------------");
+
+		// TODO: update this to not display current user
+		console.printUsers(users);
+	}
+
+	private boolean validateUserChoice(int userIdChoice, User[] users, AuthenticatedUser currentUser) {
+		if(userIdChoice != 0) {
+			try {
+				boolean validUserIdChoice = false;
+
+				for (User user : users) {
+					if(userIdChoice == currentUser.getUser().getId()) {
+						throw new InvalidUserChoiceException();
+					}
+					if (user.getId() == userIdChoice) {
+						validUserIdChoice = true;
+						break;
+					}
+				}
+				if (validUserIdChoice == false) {
+					throw new UserNotFoundException();
+				}
+				return true;
+			} catch (UserNotFoundException | InvalidUserChoiceException e) {
+				System.out.println(e.getMessage());
+			}
+		}
+		return false;
+	}
+
+	private Transfer validateTransferIdChoice(int transferIdChoice, Transfer[] transfers, AuthenticatedUser currentUser) {
+		Transfer transferChoice = null;
+		if(transferIdChoice != 0) {
+			try {
+				boolean validTransferIdChoice = false;
+				for (Transfer transfer : transfers) {
+					if (transfer.getTransferId() == transferIdChoice) {
+						validTransferIdChoice = true;
+						transferChoice = transfer;
+						break;
+					}
+				}
+				if (!validTransferIdChoice) {
+					throw new InvalidTransferIdChoice();
+				}
+			} catch (InvalidTransferIdChoice e) {
+				System.out.println(e.getMessage());
+			}
+		}
+		return transferChoice;
+	}
+
+	private void approveOrReject(Transfer pendingTransfer, AuthenticatedUser authenticatedUser) {
+		// TODO: write method to approve or reject transfer
+	}
+}
 

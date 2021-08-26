@@ -85,6 +85,15 @@ public class JdbcTransferDAO implements TransferDAO {
         return transfers;
     }
 
+    @Override
+    public void updateTransfer(Transfer transfer) {
+        String sql = "UPDATE transfers " +
+                "SET transfer_status_id = ? " +
+                "WHERE transfer_id = ?";
+
+        jdbcTemplate.update(sql, transfer.getTransferStatusId(), transfer.getTransferId());
+    }
+
     private Transfer mapResultToTransfer(SqlRowSet result) {
         int transferId = result.getInt("transfer_id");
         int transferTypeId = result.getInt("transfer_type_id");

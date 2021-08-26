@@ -89,7 +89,7 @@ public class ConsoleService {
 	public void printTransfers(int transferId, String fromOrTo, BigDecimal amount) {
 		out.println(transferId + "     " + fromOrTo + "          " + "$ " + amount);
 	}
-	public void printTranferDetails(int id, String from, String to, String type, String status, BigDecimal amount) {
+	public void printTransferDetails(int id, String from, String to, String type, String status, BigDecimal amount) {
 		out.println("-------------------------------");
 		out.println("Transfer Details");
 		out.println("-------------------------------");

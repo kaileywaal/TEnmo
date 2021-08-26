@@ -40,7 +40,7 @@ public class TenmoController {
 
     @ResponseStatus(HttpStatus.CREATED)
     @RequestMapping(path="/transfers/{id}", method = RequestMethod.POST)
-    public void addTransfer(@RequestBody Transfer transfer, @PathVariable int id)throws InsufficientFunds {
+    public void addTransfer(@RequestBody Transfer transfer, @PathVariable int id) throws InsufficientFunds {
 
         BigDecimal amountToTransfer = transfer.getAmount();
         Account accountFrom = accountDAO.getAccountByAccountID(transfer.getAccountFrom());
@@ -109,4 +109,26 @@ public class TenmoController {
         return transferDAO.getPendingTransfers(userId);
     }
 
+    @RequestMapping(path="/transfers/{id}", method = RequestMethod.PUT)
+    public void updateTransferStatus(@RequestBody Transfer transfer, @PathVariable int id) throws InsufficientFunds {
+
+        // only go through with the transfer if it is approved
+        if(transfer.getTransferStatusId() == transferStatusDAO.getTransferStatusByDesc("Approved").getTransferStatusId()) {
+
+            BigDecimal amountToTransfer = transfer.getAmount();
+            Account accountFrom = accountDAO.getAccountByAccountID(transfer.getAccountFrom());
+            Account accountTo = accountDAO.getAccountByAccountID(transfer.getAccountTo());
+
+            accountFrom.getBalance().sendMoney(amountToTransfer);
+            accountTo.getBalance().receiveMoney(amountToTransfer);
+
+            transferDAO.updateTransfer(transfer);
+
+            accountDAO.updateAccount(accountFrom);
+            accountDAO.updateAccount(accountTo);
+        } else {
+            transferDAO.updateTransfer(transfer);
+        }
+
+    }
 }
