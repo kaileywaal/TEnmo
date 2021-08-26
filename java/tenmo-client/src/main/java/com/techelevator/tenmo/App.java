@@ -138,45 +138,24 @@ public class App {
 	}
 
 	private void sendBucks() {
-		// TODO Auto-generated method stub
 		User[] users = userService.getAllUsers(currentUser);
+		printUserOptions(currentUser, users);
 
-		System.out.println("-------------------------------");
-		System.out.println("Users");
-		System.out.println("ID          Name");
-		System.out.println("-------------------------------");
-
-		console.printUsers(users);
 		int userIdChoice = console.getUserInputInteger("Enter ID of user you are sending to (0 to cancel)");
-		if(userIdChoice != 0) {
-			try {
-				boolean validUserIdChoice = false;
-
-				for (User user : users) {
-					if(userIdChoice == currentUser.getUser().getId()) {
-						throw new InvalidUserChoiceException();
-					}
-					if (user.getId() == userIdChoice) {
-						validUserIdChoice = true;
-						break;
-					}
-				}
-				if (validUserIdChoice == false) {
-					throw new UserNotFoundException();
-				}
-				String amountChoice = console.getUserInput("Enter amount");
-
-				createTransfer(userIdChoice, amountChoice);
-
-			} catch (UserNotFoundException | InvalidUserChoiceException e) {
-				System.out.println(e.getMessage());
-			}
+		if (validateUserChoice(userIdChoice, users, currentUser)) {
+			String amountChoice = console.getUserInput("Enter amount");
+			createTransfer(userIdChoice, amountChoice, "Send", "Approved");
 		}
 	}
 
 		private void requestBucks () {
-			// TODO Auto-generated method stub
-
+			User[] users = userService.getAllUsers(currentUser);
+			printUserOptions(currentUser, users);
+			int userIdChoice = console.getUserInputInteger("Enter ID of user you are requesting from (0 to cancel)");
+			if (validateUserChoice(userIdChoice, users, currentUser)) {
+				String amountChoice = console.getUserInput("Enter amount");
+				createTransfer(userIdChoice, amountChoice, "Request", "Pending");
+			}
 		}
 
 		private void exitProgram () {
@@ -240,12 +219,20 @@ public class App {
 			return new UserCredentials(username, password);
 		}
 
-		private Transfer createTransfer ( int accountToUserId, String amountString){
+		private Transfer createTransfer (int accountChoiceUserId, String amountString, String transferType, String status){
 
-			int transferTypeId = transferTypeService.getTransferType(currentUser, "Send").getTransferTypeId();
-			int transferStatusId = transferStatusService.getTransferStatus(currentUser, "Approved").getTransferStatusId();
-			int accountToId = accountService.getAccountByUserId(currentUser, accountToUserId).getAccountId();
-			int accountFromId = accountService.getAccountByUserId(currentUser, currentUser.getUser().getId()).getAccountId();
+			int transferTypeId = transferTypeService.getTransferType(currentUser, transferType).getTransferTypeId();
+			int transferStatusId = transferStatusService.getTransferStatus(currentUser, status).getTransferStatusId();
+			int accountToId;
+			int accountFromId;
+			if(transferType.equals("Send")) {
+				accountToId = accountService.getAccountByUserId(currentUser, accountChoiceUserId).getAccountId();
+				accountFromId = accountService.getAccountByUserId(currentUser, currentUser.getUser().getId()).getAccountId();
+			} else {
+				accountToId = accountService.getAccountByUserId(currentUser, currentUser.getUser().getId()).getAccountId();
+				accountFromId = accountService.getAccountByUserId(currentUser, accountChoiceUserId).getAccountId();
+			}
+
 			BigDecimal amount = new BigDecimal(amountString);
 
 			Transfer transfer = new Transfer();
@@ -308,6 +295,43 @@ public class App {
 
 			console.printTranferDetails(id, fromUserName, toUserName, transactionType, transactionStatus, amount);
 		}
+
+		private void printUserOptions(AuthenticatedUser authenticatedUser, User[] users) {
+
+			System.out.println("-------------------------------");
+			System.out.println("Users");
+			System.out.println("ID          Name");
+			System.out.println("-------------------------------");
+
+			// TODO: update this to not display current user
+			console.printUsers(users);
+		}
+
+		private boolean validateUserChoice(int userIdChoice, User[] users, AuthenticatedUser currentUser) {
+			if(userIdChoice != 0) {
+				try {
+					boolean validUserIdChoice = false;
+
+					for (User user : users) {
+						if(userIdChoice == currentUser.getUser().getId()) {
+							throw new InvalidUserChoiceException();
+						}
+						if (user.getId() == userIdChoice) {
+							validUserIdChoice = true;
+							break;
+						}
+					}
+					if (validUserIdChoice == false) {
+						throw new UserNotFoundException();
+					}
+					return true;
+				} catch (UserNotFoundException | InvalidUserChoiceException e) {
+					System.out.println(e.getMessage());
+				}
+			}
+			return false;
+		}
+
 
 	}
 
