@@ -99,6 +99,11 @@ public class ConsoleService {
 		out.println("Type: " + type);
 		out.println("Status: " + status);
 		out.println("Amount: $" + amount);
+	}
 
+	public void printApproveOrRejectOptions() {
+		out.println("1: Approve");
+		out.println("2: Reject");
+		out.println("0: Don't approve or reject\n");
 	}
 }

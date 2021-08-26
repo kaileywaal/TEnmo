@@ -120,4 +120,26 @@ public class RestTransferService implements TransferService {
         return transfers;
     }
 
+    @Override
+    public void updateTransfer(AuthenticatedUser authenticatedUser, Transfer transfer) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(authenticatedUser.getToken());
+        HttpEntity<Transfer> entity = new HttpEntity(transfer, headers);
+
+        String url = baseUrl + "/transfers/" + transfer.getTransferId();
+
+        try {
+            restTemplate.exchange(url, HttpMethod.PUT, entity, Transfer.class);
+        } catch(RestClientResponseException e) {
+            if (e.getMessage().contains("You're broke, bud")) {
+                System.out.println("You don't have enough money for that transaction.");
+            } else {
+                System.out.println("Could not complete request. Code: " + e.getRawStatusCode());
+            }
+        } catch(ResourceAccessException e) {
+            System.out.println("Could not complete request due to server network issue. Please try again.");
+        }
+    }
+
 }

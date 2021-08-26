@@ -349,6 +349,22 @@ public class App {
 
 	private void approveOrReject(Transfer pendingTransfer, AuthenticatedUser authenticatedUser) {
 		// TODO: write method to approve or reject transfer
+		console.printApproveOrRejectOptions();
+		int choice = console.getUserInputInteger("Please choose an option");
+
+		if(choice != 0) {
+			if(choice == 1) {
+				int transferStatusId = transferStatusService.getTransferStatus(currentUser, "Approved").getTransferStatusId();
+				pendingTransfer.setTransferStatusId(transferStatusId);
+			} else if (choice == 2) {
+				int transferStatusId = transferStatusService.getTransferStatus(currentUser, "Rejected").getTransferStatusId();
+				pendingTransfer.setTransferStatusId(transferStatusId);
+			} else {
+				System.out.println("Invalid choice.");
+			}
+			transferService.updateTransfer(currentUser, pendingTransfer);
+		}
+
 	}
 }
 

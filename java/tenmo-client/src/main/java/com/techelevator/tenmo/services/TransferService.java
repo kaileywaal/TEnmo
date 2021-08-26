@@ -10,4 +10,5 @@ public interface TransferService {
     Transfer getTransferFromTransferId(AuthenticatedUser authenticatedUser, int id);
     Transfer[] getAllTransfers(AuthenticatedUser authenticatedUser);
     Transfer[] getPendingTransfersByUserId(AuthenticatedUser authenticatedUser);
+    void updateTransfer(AuthenticatedUser authenticatedUser, Transfer transfer);
 }
