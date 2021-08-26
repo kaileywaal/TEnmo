@@ -9,5 +9,5 @@ public interface TransferService {
     Transfer[] getTransfersFromUserId(AuthenticatedUser authenticatedUser, int userId);
     Transfer getTransferFromTransferId(AuthenticatedUser authenticatedUser, int id);
     Transfer[] getAllTransfers(AuthenticatedUser authenticatedUser);
-
+    Transfer[] getPendingTransfersByUserId(AuthenticatedUser authenticatedUser);
 }

@@ -38,7 +38,6 @@ public class App {
 	private TransferStatusService transferStatusService;
 	private TransferService transferService;
 
-	//TODO make transferIDNumber increment up
 	private static int transferIdNumber;
 
 
@@ -133,7 +132,16 @@ public class App {
 	}
 
 	private void viewPendingRequests() {
-		// TODO Auto-generated method stub
+		Transfer[] transfers = transferService.getPendingTransfersByUserId(currentUser);
+		System.out.println("-------------------------------");
+		System.out.println("Pending Transfers");
+		System.out.println("ID          To          Amount");
+		System.out.println("-------------------------------");
+
+		for(Transfer transfer: transfers) {
+			printTransferStubDetails(currentUser, transfer);
+		}
+		// TODO ask to view details
 
 	}
 

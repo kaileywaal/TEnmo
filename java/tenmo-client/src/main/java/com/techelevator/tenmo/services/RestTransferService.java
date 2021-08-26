@@ -103,5 +103,21 @@ public class RestTransferService implements TransferService {
         return entity;
     }
 
+    @Override
+    public Transfer[] getPendingTransfersByUserId(AuthenticatedUser authenticatedUser) {
+        Transfer[] transfers = null;
+        try {
+            transfers = restTemplate.exchange(baseUrl + "/transfers/user/" + authenticatedUser.getUser().getId() + "/pending",
+                    HttpMethod.GET,
+                    makeEntity(authenticatedUser),
+                    Transfer[].class
+            ).getBody();
+        } catch(RestClientResponseException e) {
+            System.out.println("Could not complete request. Code: " + e.getRawStatusCode());
+        } catch(ResourceAccessException e) {
+            System.out.println("Could not complete request due to server network issue. Please try again.");
+        }
+        return transfers;
+    }
 
 }

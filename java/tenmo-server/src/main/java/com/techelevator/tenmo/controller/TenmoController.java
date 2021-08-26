@@ -104,4 +104,9 @@ public class TenmoController {
         return transferStatusDAO.getTransferStatusById(id);
     }
 
+    @RequestMapping(path="/transfers/user/{userId}/pending", method = RequestMethod.GET)
+    public List<Transfer> getPendingTransfersByUserId(@PathVariable int userId) {
+        return transferDAO.getPendingTransfers(userId);
+    }
+
 }
