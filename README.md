@@ -128,4 +128,4 @@ Please choose an option:
 
 ## The Developers
 
-The initial version of this Vending Machine program was built as a mini capstone project with Mario Paz during a 14 week coding bootcamp at Tech Elevator. The login and authentication functionality was provided (marked as COMPLETE above) by TE. After the capstone was complete, I added additional functionality to allow users to request money and approve/reject transfer requests.
+The initial version of this Vending Machine program was built as a mini capstone project with Mario Paz during a 14 week coding bootcamp at [Tech Elevator](https://www.techelevator.com/aptitude-test-referred?mbsy_source=183cf48e-9fe1-484e-a967-fd43e3c4fb34&mbsy_exp=Mon%2C+01+Jul+2024+17%3A08%3A30+GMT&campaignid=36038&mbsy=3s6sdT). The login and authentication functionality was provided (marked as COMPLETE above) by TE. After the capstone was complete, I added additional functionality to allow users to request money and approve/reject transfer requests.
